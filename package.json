@@ -13,12 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/websocket": "^11.2.0",
+    "better-sqlite3": "^12.8.0",
     "fastify": "^5.8.4",
     "serialport": "^12",
     "uuid": "^9",
     "ws": "^8"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
     "@types/uuid": "^9",
     "@types/ws": "^8",

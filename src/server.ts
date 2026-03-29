@@ -1,6 +1,7 @@
 // src/server.ts
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
+import { onConnection } from './ws/socketHandler.js'
 
 const fastify = Fastify({ logger: true })
 
@@ -11,13 +12,7 @@ fastify.register(async (app) => {
   app.get('/ws', { websocket: true }, (socket, req) => {
     console.log('Client connected')
 
-    socket.on('message', (message) => {
-      const data = message.toString()
-      console.log('Received:', data)
-
-      // Echo back to the sender
-      socket.send(`Echo: ${data}`)
-    })
+    onConnection(socket);
 
     socket.on('close', () => {
       console.log('Client disconnected')
