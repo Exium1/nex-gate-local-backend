@@ -1,6 +1,6 @@
 import { SerialPort } from 'serialport'
 import { ReadlineParser } from '@serialport/parser-readline'
-import { broadcast } from '../ws/broadcast.js'
+import ClientRegistry from '../ws/ClientRegistry.js'
 
 export function startSerial(path = '/dev/ttyUSB0') {
   const port = new SerialPort({ path, baudRate: 115200 })
@@ -10,7 +10,7 @@ export function startSerial(path = '/dev/ttyUSB0') {
     try {
       const msg = JSON.parse(line.trim())
       if (msg.type === 'gate_trigger') {
-        broadcast({ type: 'gate_event', gateId: msg.gateId, ts: msg.ts })
+        ClientRegistry.broadcast({ type: 'gate_event', gateId: msg.gateId, ts: msg.ts })
       }
     } catch (_) {}
   })

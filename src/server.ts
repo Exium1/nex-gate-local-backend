@@ -2,6 +2,7 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { onConnection } from './ws/socketHandler.js'
+import { startSerial } from './serial/serialReader.js'
 
 const fastify = Fastify({ logger: true })
 
@@ -28,6 +29,16 @@ fastify.register(async (app) => {
 fastify.get('/health', async () => {
   return { status: 'ok' }
 })
+
+// ── Serial bridge ─────────────────────────────────────────────
+const SERIAL_PATH = process.env.SERIAL_PATH ?? '/dev/ttyUSB0'
+
+try {
+  // startSerial(SERIAL_PATH)
+  fastify.log.info(`Serial listening on ${SERIAL_PATH}`)
+} catch (err) {
+  fastify.log.warn(`Serial unavailable (${SERIAL_PATH}) — running without hardware`)
+}
 
 const start = async () => {
   try {

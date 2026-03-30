@@ -61,7 +61,7 @@ export default class MessageHandler {
 
     const client = ClientRegistry.join(this.client, payload);
 
-    this.reply({ type: 'join_success', client: client })
+    this.reply({ type: 'join_success', client: { id: client.id, role: client.role, pilotName: client.pilotName} })
   }
 
   private handleRaceControlMessage(payload: RaceControlPayload) {
