@@ -12,23 +12,22 @@ export function runMigrations() {
     CREATE TABLE IF NOT EXISTS laps (
       id               TEXT    PRIMARY KEY,
       race_session_id  TEXT    NOT NULL REFERENCES race_sessions(id),
-      status           TEXT    NOT NULL DEFAULT 'incomplete'  -- incomplete | active | finished
-                               CHECK(status IN ('incomplete', 'active', 'finished')),
       pilot_name       TEXT,                                  -- NULL until pilot is known
-      lap_time_ms      INTEGER NOT NULL DEFAULT 0,
+      lap_time_ms      INTEGER,
+      gate_count       INTEGER NOT NULL,
       started_at       INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS gate_events (
-      id               TEXT    PRIMARY KEY,
-      gate_id          TEXT    NOT NULL,
-      race_session_id  TEXT    REFERENCES race_sessions(id),  -- NULL if triggered outside a session
-      lap_id           TEXT    REFERENCES laps(id),           -- NULL if not part of a lap
-      pilot_name       TEXT,                                  -- NULL if pilot unknown
-      beam_x           REAL    NOT NULL,
-      beam_y           REAL    NOT NULL,
-      triggered_at     INTEGER NOT NULL,                      -- ns relative to lap start (0 for first gate)
-      interval_ms      INTEGER NOT NULL DEFAULT 0             -- ms since previous gate (0 for first gate)
+      id               TEXT       PRIMARY KEY,
+      gate_id          INTEGER    NOT NULL,
+      race_session_id  TEXT       REFERENCES race_sessions(id),  -- NULL if triggered outside a session
+      lap_id           TEXT       REFERENCES laps(id),           -- NULL if not part of a lap
+      pilot_name       TEXT,                                     -- NULL if pilot unknown
+      beam_x           INTEGER NOT NULL,
+      beam_y           INTEGER NOT NULL,
+      triggered_at     INTEGER NOT NULL,                         -- ns relative to lap start (0 for first gate)
+      interval_ms      INTEGER NOT NULL DEFAULT 0                -- ms since previous gate (0 for first gate)
     );
 
     -- Indexes for the most common lookups
