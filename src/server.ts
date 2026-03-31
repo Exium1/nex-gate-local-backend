@@ -84,6 +84,9 @@ const dev = () => {
           }
           socket.write('\n> ');
           break;
+        case "bc":
+          ClientRegistry.broadcast({msg: "yaur"});
+          break;
         default:
           try {
             let gate = Number(input);
@@ -106,6 +109,7 @@ import net from 'net';
 import RaceSessionHandler from './ws/RaceHandler.js'
 import fs from 'fs'
 import RaceRegistry from './db/RaceRegistry.js'
+import ClientRegistry from './ws/ClientRegistry.js'
 
 dev(); // Use: node -e "const n=require('net').connect('\\\\.\\pipe\\myapp-debug');process.stdin.pipe(n);n.pipe(process.stdout)"
 
