@@ -2,13 +2,9 @@ import RaceRegistry, { GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js
 import ClientRegistry from "./ClientRegistry.js";
 import { v4 as uuid } from 'uuid'
 
-type cachedData = {
-  session: RaceSession 
-}
-
 export default class RaceSessionHandler {
 
-  // === CACHE ===
+  // === CACHE PER PILOT ===
   static sessionsPerPilot: Map<string, RaceSession> = new Map();
   static activeLapPerPilot: Map<string, Lap> = new Map();
   static previousGateEventPerPilot: Map<string, GateEvent> = new Map();
@@ -16,11 +12,11 @@ export default class RaceSessionHandler {
   static gateTriggered(gateId: number, timestamp: number, beamX: number, beamY: number) {
 
     // Update UI
-    ClientRegistry.broadcast({ type: 'gate_event', gateId, timestamp })
+    // ClientRegistry.broadcast({ type: 'gate_trigger', payload: { gate_id: gateId, timestamp, beam_x: beamX, beam_y: beamY }})
     
     // Ongoing lap
     const pilotName = "default"; // TODO: extract from trigger somehow
-    const gateCount = 10; // TODO: extract from config somehow
+    const gateCount = 5; // TODO: extract from config somehow
     const session = this.sessionsPerPilot.get(pilotName) || RaceRegistry.getActiveRaceSession(pilotName);
     const lapTimeout = 180000; // 3 mins im ms
 
@@ -35,6 +31,7 @@ export default class RaceSessionHandler {
 
     let lap = this.activeLapPerPilot.get(pilotName) || RaceRegistry.getActiveLap(pilotName, session.id);
     let intervalMs = 0;
+    let broadcastedGateEvent = false;
 
     // If active lap is expired/timed out
     if (lap && (timestamp - lap.started_at) > lapTimeout) {
@@ -59,7 +56,14 @@ export default class RaceSessionHandler {
             // === COMPLETED LAP ===
             let gateEvent: GateEvent = this.newGateEvent(gateId, session.id, lap.id,
               pilotName, beamX, beamY, timestamp, intervalMs)
+
+            ClientRegistry.broadcast({ type: 'gate_event', payload: gateEvent})
+            ClientRegistry.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.started_at }})
+
             RaceRegistry.recordGateEvent(gateEvent); // Save gate event, since new lap & event will be created.
+            RaceRegistry.completeLap(lap.id, timestamp - lap.started_at);
+
+            broadcastedGateEvent = true;
           }
         } else {
           console.log(`[${pilotName}] Expected Gate ${expectedGate} instead...`);
@@ -79,8 +83,7 @@ export default class RaceSessionHandler {
       console.log(`[${pilotName}] Gate 0 override. Starting new lap...`);
       lap = RaceRegistry.startLap(session.id, pilotName, gateCount);
       intervalMs = 0;
-      
-      this.activeLapPerPilot.set(pilotName, lap);
+      this.activeLapPerPilot.set(pilotName, lap);    
     }
 
     let gateEvent: GateEvent = {
@@ -95,6 +98,7 @@ export default class RaceSessionHandler {
       interval_ms: intervalMs
     }
 
+    !broadcastedGateEvent && ClientRegistry.broadcast({ type: 'gate_event', payload: gateEvent})
     RaceRegistry.recordGateEvent(gateEvent);
     this.previousGateEventPerPilot.set(pilotName, gateEvent);
   }

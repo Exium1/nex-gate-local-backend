@@ -2,7 +2,9 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { onConnection } from './ws/socketHandler.js'
-import { startSerial } from './serial/serialReader.js'
+import { runMigrations } from './db/schema.js'
+
+runMigrations() // runs once, safe to call every startup
 
 const fastify = Fastify({ logger: true })
 
@@ -50,3 +52,61 @@ const start = async () => {
 }
 
 start()
+
+// DEV TESTING STUFF
+const dev = () => {
+  const SOCKET_PATH = '\\\\.\\pipe\\myapp-debug';
+
+  // Remove stale socket if it exists
+  if (fs.existsSync(SOCKET_PATH)) {
+    fs.unlinkSync(SOCKET_PATH);
+  }
+
+  const debugServer = net.createServer((socket) => {
+    socket.write('debug> ');
+    socket.on('data', async (data) => {
+      const input = data.toString().trim();
+
+      switch (input.split(" ")[0]) {
+        case "session_new":
+          try {
+            RaceRegistry.startRaceSession(input.split(" ")[1]);
+          } catch (e) {
+            socket.write(JSON.stringify(e) + '\n> ');
+          }
+          socket.write('\n> ');
+          break;
+        case "session_end":
+          try {
+            RaceRegistry.endRaceSession(input.split(" ")[1]);
+          } catch (e) {
+            socket.write(JSON.stringify(e) + '\n> ');
+          }
+          socket.write('\n> ');
+          break;
+        default:
+          try {
+            let gate = Number(input);
+            RaceSessionHandler.gateTriggered(gate, Date.now(), 5, 5);
+          } catch (e) {
+            socket.write(JSON.stringify(e) + '\n> ');
+          }
+          socket.write('\n> ');
+      }
+    });
+  });
+
+  debugServer.listen(SOCKET_PATH);
+
+  process.on('exit', () => { RaceRegistry.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH) });
+  process.on('SIGINT', () => { RaceRegistry.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH); process.exit(); });
+}
+
+import net from 'net';
+import RaceSessionHandler from './ws/RaceHandler.js'
+import fs from 'fs'
+import RaceRegistry from './db/RaceRegistry.js'
+
+dev(); // Use: node -e "const n=require('net').connect('\\\\.\\pipe\\myapp-debug');process.stdin.pipe(n);n.pipe(process.stdout)"
+
+

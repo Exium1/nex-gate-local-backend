@@ -2,6 +2,7 @@ import { WebSocket } from "@fastify/websocket";
 import { Role } from "../types/roles.js";
 import { v4 as uuid } from 'uuid'
 import ClientRegistry from "./ClientRegistry.js";
+import RaceRegistry from "../db/RaceRegistry.js";
 
 export default class Client {
   ws: WebSocket // WS
@@ -30,6 +31,10 @@ export default class Client {
       ClientRegistry.director = null;
     }
 
+    try {
+      if (this.pilotName) RaceRegistry.endRaceSession(this.pilotName);
+    } catch (_) {}
+    
     ClientRegistry.clients.delete(this.id);
     this.ws.close();
   }

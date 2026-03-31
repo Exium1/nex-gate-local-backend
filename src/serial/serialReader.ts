@@ -1,7 +1,5 @@
 import { SerialPort } from 'serialport'
 import { ReadlineParser } from '@serialport/parser-readline'
-import ClientRegistry from '../ws/ClientRegistry.js'
-import RaceRegistry from '../db/RaceRegistry.js'
 import RaceSessionHandler from '../ws/RaceHandler.js'
 
 export function startSerial(path = '/dev/ttyUSB0') {

@@ -36,13 +36,13 @@ export default class RaceRegistry {
   // --- Race Sessions ---
   static getActiveRaceSession(pilot_name: string): (RaceSession | null) {
     return db.prepare(`
-      SELECT * FROM race_sessions WHERE pilot_name = ? AND ended_at = null ORDER BY started_at DESC LIMIT 1
+      SELECT * FROM race_sessions WHERE pilot_name = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1
     `).get(pilot_name) as RaceSession | null
   }
 
   static startRaceSession(pilot_name: string): RaceSession {
-    const actionSession = this.getActiveRaceSession(pilot_name);
-    if (actionSession !== null && actionSession?.ended_at !== null) {
+    const activeSession = this.getActiveRaceSession(pilot_name);
+    if (activeSession) {
       throw new Error(`On-going race session for ${pilot_name}`);
     }
 
@@ -61,9 +61,8 @@ export default class RaceRegistry {
   }
 
   static endRaceSession(pilot_name: string): void {
-    const currentSession = this.getActiveRaceSession(pilot_name);
-
-    if (currentSession == null || currentSession?.ended_at == null) {
+    const activeSession = this.getActiveRaceSession(pilot_name);
+    if (!activeSession) {
       throw new Error(`No on-going race session found for ${pilot_name}`);
     }
 
@@ -71,7 +70,13 @@ export default class RaceRegistry {
 
     db.prepare(`
       UPDATE race_sessions SET ended_at = ? WHERE id = ?
-    `).run(Date.now(), currentSession.id)
+    `).run(Date.now(), activeSession.id)
+  }
+
+  static endAllRaceSessions(): void {
+    db.prepare(`
+      UPDATE race_sessions SET ended_at = ? WHERE ended_at IS NULL AND started_at IS NOT NULL
+    `).run(Date.now())
   }
 
   // --- Laps ---
@@ -107,13 +112,13 @@ export default class RaceRegistry {
   // Get most recent active lap from pilot
   static getPilotActiveLap(pilotName: string) {
     return db.prepare(`
-      SELECT * FROM laps WHERE pilot_name = ? AND lap_time_ms = null ORDER BY started_at DESC LIMIT 1
+      SELECT * FROM laps WHERE pilot_name = ? AND lap_time_ms IS NULL ORDER BY started_at DESC LIMIT 1
     `).get(pilotName) as Lap | null
   }
 
   static getActiveLap(pilotName: string, sessionId: string) {
     return db.prepare(`
-      SELECT * FROM laps WHERE pilot_name = ? AND race_session_id = ? AND lap_time_ms = null ORDER BY started_at DESC LIMIT 1
+      SELECT * FROM laps WHERE pilot_name = ? AND race_session_id = ? AND lap_time_ms IS NULL ORDER BY started_at DESC LIMIT 1
     `).get(pilotName, sessionId) as Lap | null
   }
 
