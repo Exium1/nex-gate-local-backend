@@ -1,60 +1,125 @@
-import RaceRegistry, { GateEvent } from "../db/RaceRegistry.js";
+import RaceRegistry, { GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js";
 import ClientRegistry from "./ClientRegistry.js";
 import { v4 as uuid } from 'uuid'
 
+type cachedData = {
+  session: RaceSession 
+}
+
 export default class RaceSessionHandler {
 
-  // static gates: Set<Gate
+  // === CACHE ===
+  static sessionsPerPilot: Map<string, RaceSession> = new Map();
+  static activeLapPerPilot: Map<string, Lap> = new Map();
+  static previousGateEventPerPilot: Map<string, GateEvent> = new Map();
 
   static gateTriggered(gateId: number, timestamp: number, beamX: number, beamY: number) {
 
+    // Update UI
     ClientRegistry.broadcast({ type: 'gate_event', gateId, timestamp })
     
-    // If gate 0, start a lap
-    // If not session, start a session
-
     // Ongoing lap
     const pilotName = "default"; // TODO: extract from trigger somehow
     const gateCount = 10; // TODO: extract from config somehow
-    const session = RaceRegistry.getActiveRaceSession(pilotName);
+    const session = this.sessionsPerPilot.get(pilotName) || RaceRegistry.getActiveRaceSession(pilotName);
+    const lapTimeout = 180000; // 3 mins im ms
+
+    console.log(`[${pilotName}] Gate ${gateId} triggered...`)
 
     if (!session) {
-      console.log("Gate trigger, but no session was found.")
+      console.log(`[${pilotName}] No session found...`)
       return;
     }
     
-    let lap = RaceRegistry.getPilotActiveLap(pilotName);
+    this.sessionsPerPilot.set(pilotName, session);
+
+    let lap = this.activeLapPerPilot.get(pilotName) || RaceRegistry.getActiveLap(pilotName, session.id);
+    let intervalMs = 0;
+
+    // If active lap is expired/timed out
+    if (lap && (timestamp - lap.started_at) > lapTimeout) {
+      this.activeLapPerPilot.delete(pilotName);
+      lap = null;
+    }
 
     if (lap) {
-      // Check if gate is correctly coming after previous
+      this.activeLapPerPilot.set(pilotName, lap);
+
+      // === GATE ORDER LOGIC ===
+      let prevGateEvent = this.previousGateEventPerPilot.get(pilotName) || RaceRegistry.getPreviousGateEvent(session.id, pilotName);
+
+      if (prevGateEvent) {
+        intervalMs = timestamp - prevGateEvent?.triggered_at;
+        const expectedGate = this.nextGateId(prevGateEvent.gate_id, gateCount);
+
+        if (expectedGate === gateId) {
+          if (gateId === 0) {
+            console.log(`[${pilotName}] Lap complete. Recording final gate event...`)
+
+            // === COMPLETED LAP ===
+            let gateEvent: GateEvent = this.newGateEvent(gateId, session.id, lap.id,
+              pilotName, beamX, beamY, timestamp, intervalMs)
+            RaceRegistry.recordGateEvent(gateEvent); // Save gate event, since new lap & event will be created.
+          }
+        } else {
+          console.log(`[${pilotName}] Expected Gate ${expectedGate} instead...`);
+          if (gateId !== 0) return; // Dismiss trigger (out of order gate that isn't restart lap)
+        }
+      } else {
+        console.log(`[${pilotName}] No previous Gate ${this.previousGateId(gateId, gateCount)} event found...`);
+        if (gateId !== 0) return; // Dismiss trigger no prev or gate 0 event found
+      }
     } else {
-      // Dismiss unless gate 0      
-      console.log("No ongoing lap found...")
-      if (gateId == 0) {
-        console.log("First gate triggered, starting lap...");
-        lap = RaceRegistry.startLap(session.id, pilotName, gateCount);
-      } else return;
+      console.log(`[${pilotName}] No ongoing lap found or lap expired...`)
+      if (gateId !== 0) return; // Dismiss trigger unless gate 0
+    }
+
+    // === LAP CREATION OVERRIDES ===
+    if (gateId === 0) {
+      console.log(`[${pilotName}] Gate 0 override. Starting new lap...`);
+      lap = RaceRegistry.startLap(session.id, pilotName, gateCount);
+      intervalMs = 0;
+      
+      this.activeLapPerPilot.set(pilotName, lap);
     }
 
     let gateEvent: GateEvent = {
       id: uuid(),
       gate_id: gateId,
       race_session_id: session.id,
-      lap_id: lap.id,
+      lap_id: lap!.id, // Lap will be created in override
       pilot_name: pilotName,
       beam_x: beamX,
       beam_y: beamY,
       triggered_at: timestamp,
-      interval_ms: null
+      interval_ms: intervalMs
     }
 
     RaceRegistry.recordGateEvent(gateEvent);
+    this.previousGateEventPerPilot.set(pilotName, gateEvent);
+  }
 
+  private static previousGateId(gateId: number, gateCount: number): number {
+    return (gateId - 1) >= 0 ? gateId - 1 : gateCount - 1;
+  }
 
+  private static nextGateId(gateId: number, gateCount: number): number {
+    return (gateId + 1) % (gateCount);
+  }
 
-
-    // Check cache for previous gate. Is this expected & get interval_ms
-
-    // Ongoing session
+  private static newGateEvent(gateId: number, sessionId: string, lapId: string, pilotName: string,
+      beamX: number, beamY: number, triggeredAt: number, intervalMs: number): GateEvent {
+    
+    return {
+      id: uuid(),
+      gate_id: gateId,
+      race_session_id: sessionId,
+      lap_id: lapId,
+      pilot_name: pilotName,
+      beam_x: beamX,
+      beam_y: beamY,
+      triggered_at: triggeredAt,
+      interval_ms: intervalMs
+    }
   }
 }

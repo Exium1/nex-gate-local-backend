@@ -1,3 +1,4 @@
+import RaceSessionHandler from '../ws/RaceHandler.js'
 import db from './database.js'
 import { v4 as uuid } from 'uuid'
 
@@ -66,6 +67,8 @@ export default class RaceRegistry {
       throw new Error(`No on-going race session found for ${pilot_name}`);
     }
 
+    RaceSessionHandler.sessionsPerPilot.delete(pilot_name);
+
     db.prepare(`
       UPDATE race_sessions SET ended_at = ? WHERE id = ?
     `).run(Date.now(), currentSession.id)
@@ -108,18 +111,24 @@ export default class RaceRegistry {
     `).get(pilotName) as Lap | null
   }
 
+  static getActiveLap(pilotName: string, sessionId: string) {
+    return db.prepare(`
+      SELECT * FROM laps WHERE pilot_name = ? AND race_session_id = ? AND lap_time_ms = null ORDER BY started_at DESC LIMIT 1
+    `).get(pilotName, sessionId) as Lap | null
+  }
+
   // --- Gate Events ---
   static recordGateEvent(event: GateEvent) {
     db.prepare(`
       INSERT INTO gate_events (id, gate_id, race_session_id, lap_id, pilot_name, beam_x, beam_y, triggered_at, interval_ms)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(uuid(), event.gate_id, event.race_session_id, event.lap_id,
         event.pilot_name, event.beam_x, event.beam_y, event.triggered_at, event.interval_ms)
   }
 
-  static getPreviousGate() {
+  static getPreviousGateEvent(sessionId: string, pilotName: string): GateEvent | null {
     return db.prepare(`
-      SELECT * FROM gate_events WHERE race_session_id = ? AND pilot_name = ? AND interval_ms = null ORDER BY started_at DESC LIMIT 1
-    `).get(pilotName) as Lap | null
+      SELECT * FROM gate_events WHERE race_session_id = ? AND pilot_name = ? ORDER BY triggered_at DESC LIMIT 1
+    `).get(sessionId, pilotName) as GateEvent | null
   }
 }
