@@ -19,6 +19,13 @@ export type Lap = {
   // Status, if no lap time it's either DNF or active, most recent is active
 }
 
+export type RichGateEvent = {
+  color?: "purple" | "yellow" | "green" | "red" | "neutral"
+  prev_split_diff_ms?: number // Difference in interval from previous gate hit
+  best_split_diff_ms?: number // Difference in interval from best gate
+  best_session_split_diff_ms?: number // Difference in interval from previous gate
+} & GateEvent
+
 export type GateEvent = {
   id: string // UUID
   gate_id: number // Number
@@ -135,5 +142,51 @@ export default class RaceRegistry {
     return db.prepare(`
       SELECT * FROM gate_events WHERE race_session_id = ? AND pilot_name = ? ORDER BY triggered_at DESC LIMIT 1
     `).get(sessionId, pilotName) as GateEvent | null
+  }
+
+  
+  // Assign a color (purple / yellow / green) to gate and diff from previous lap gate
+  static enrichData(gateEvent: GateEvent): RichGateEvent {
+    try {
+      // Get all laps from pilot with same lap id (not same session id) (purple will mean PERSONAL best across all 
+      // sessions. this might change in the future if multiplayer is supported)
+
+      // Get the one with the lowest interval (exclude 0 ms)
+
+      if (gateEvent.interval_ms === 0) return gateEvent; // Don't enrich first gate (no reference stats)
+
+      // === PILOT'S ALL TIME FASTEST SPLIT ===
+      const fastestSplit = db.prepare(`
+        SELECT * FROM gate_events WHERE gate_id = ? AND pilot_name = ? AND interval_ms != 0 ORDER BY interval_ms ASC LIMIT 1`
+      ).get(gateEvent.gate_id, gateEvent.pilot_name) as GateEvent | null
+      const best_split_diff_ms = fastestSplit ? gateEvent.interval_ms - fastestSplit.interval_ms : undefined;
+
+      // === PILOT'S CURRENT SESSION FASTEST SPLIT ===
+      const fastestSplitOfSession = db.prepare(`
+        SELECT * FROM gate_events WHERE gate_id = ? AND pilot_name = ? AND race_session_id = ? AND interval_ms != 0 ORDER BY interval_ms ASC LIMIT 1`
+      ).get(gateEvent.gate_id, gateEvent.pilot_name, gateEvent.race_session_id) as GateEvent | null
+      const best_session_split_diff_ms = fastestSplitOfSession ? gateEvent.interval_ms - fastestSplitOfSession.interval_ms : undefined;
+      
+      // === PILOT'S PREVIOUS SPLIT ===
+      const mostRecentSplit = db.prepare(`
+        SELECT * FROM gate_events WHERE gate_id = ? AND pilot_name = ? AND race_session_id = ? AND interval_ms != 0 ORDER BY triggered_at DESC LIMIT 1`
+      ).get(gateEvent.gate_id, gateEvent.pilot_name, gateEvent.race_session_id) as GateEvent | null
+      const prev_split_diff_ms = mostRecentSplit ? gateEvent.interval_ms - mostRecentSplit.interval_ms : undefined;
+
+      let color: "neutral" | "purple" | "yellow" | "green" = "neutral"
+
+      if (best_split_diff_ms === undefined || best_split_diff_ms < 0) {
+        color = "purple" // Pilot's all time fastest split for gate
+      } else if (best_session_split_diff_ms === undefined || best_session_split_diff_ms < 0) {
+        color = "green" // Pilot's best split in session for gate
+      } else {
+        color = "yellow"
+      }
+      
+      return { ...gateEvent, color, best_split_diff_ms, best_session_split_diff_ms, prev_split_diff_ms }
+    } catch (e) {
+      console.log(`Failed to enrich gate event. ` + e)
+      return gateEvent;
+    }
   }
 }
