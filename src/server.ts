@@ -3,7 +3,9 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { onConnection } from './ws/socketHandler.js'
 import { runMigrations } from './db/schema.js'
+import { HubletHandler } from './serial/serialReader.js';
 
+process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
 
 const fastify = Fastify({ logger: true })
@@ -36,8 +38,8 @@ fastify.get('/health', async () => {
 const SERIAL_PATH = process.env.SERIAL_PATH ?? '/dev/ttyUSB0'
 
 try {
-  // startSerial(SERIAL_PATH)
-  fastify.log.info(`Serial listening on ${SERIAL_PATH}`)
+  const hubletHandler = new HubletHandler(SERIAL_PATH, 115200);
+  fastify.log.info(`Serial listening on ${SERIAL_PATH}`);
 } catch (err) {
   fastify.log.warn(`Serial unavailable (${SERIAL_PATH}) — running without hardware`)
 }
