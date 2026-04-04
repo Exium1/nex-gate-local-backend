@@ -44,13 +44,13 @@ export class HubletHandler {
     const T3 = Date.now();
     const T2 = response.T2; // After first call, will be timestamp of received
     const roundTrip = T3 - T1;
-    const delayMs = roundTrip / 2;
-    const offset = T2 - T1 - delayMs;
+    this.delayMs = roundTrip / 2;
+    const offset = T2 - T1 - (2 * this.delayMs); // math
 
     // console.log(`T1: ${T1}`)
     // console.log(`T2: ${T2}`)
     // console.log(`T3: ${T3}`)
-    // console.log(`Delay: ${delayMs}`)
+    // console.log(`Delay: ${this.delayMs}`)
     // console.log(`Offset: ${offset}`)
 
     if (Math.abs(offset) > 5) {
@@ -58,23 +58,13 @@ export class HubletHandler {
     }
   }
 
-  sendSyncedTime() {
+  private sendSyncedTime() {
     // tell esp32 it's current time = date.now() + delay
+
     this.send({
       "type": "SET_TIME",
-      "ts": Date.now() + this.delayMs
+      "ts": Date.now() + (2 * this.delayMs)
     })
-
-    setTimeout(async () => {
-      let neow = Date.now();
-      this.send({
-        "type": "PRINT_TIME"
-      })
-
-      // console.log(`neow = ${neow}`);
-      // console.log(`res.ts = ${res.ts}`);
-
-    }, 3000);
   }
 
   request<T>(data: any, timeoutMs = 5000): Promise<T> {

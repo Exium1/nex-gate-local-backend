@@ -5,8 +5,8 @@ import { v4 as uuid } from 'uuid'
 export type RaceSession = {
   id: string
   started_at: number
-  ended_at: number | null
-  pilot_name: string
+  ended_at: number | null,
+  mode: "time_trial" | "set" | "race"
 }
 
 export type Lap = {
@@ -41,14 +41,14 @@ export type GateEvent = {
 export default class RaceRegistry {
   
   // --- Race Sessions ---
-  static getActiveRaceSession(pilot_name: string): (RaceSession | null) {
+  static getActiveRaceSession(): (RaceSession | null) {
     return db.prepare(`
-      SELECT * FROM race_sessions WHERE pilot_name = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1
-    `).get(pilot_name) as RaceSession | null
+      SELECT * FROM race_sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1
+    `).get() as RaceSession | null
   }
 
   static startRaceSession(pilot_name: string): RaceSession {
-    const activeSession = this.getActiveRaceSession(pilot_name);
+    const activeSession = this.getActiveRaceSession();
     if (activeSession) {
       throw new Error(`On-going race session for ${pilot_name}`);
     }
@@ -57,18 +57,18 @@ export default class RaceRegistry {
       id: uuid(),
       started_at: Date.now(),
       ended_at: null,
-      pilot_name: pilot_name,
+      mode: "time_trial"
     };
 
     db.prepare(`
-      INSERT INTO race_sessions (id, started_at, pilot_name) VALUES (?, ?, ?)
-    `).run(session.id, session.started_at, session.pilot_name)
+      INSERT INTO race_sessions (id, started_at, mode) VALUES (?, ?, ?)
+    `).run(session.id, session.started_at, session.mode)
 
     return session;
   }
 
   static endRaceSession(pilot_name: string): void {
-    const activeSession = this.getActiveRaceSession(pilot_name);
+    const activeSession = this.getActiveRaceSession();
     if (!activeSession) {
       throw new Error(`No on-going race session found for ${pilot_name}`);
     }

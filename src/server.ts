@@ -4,12 +4,18 @@ import websocket from '@fastify/websocket'
 import { onConnection } from './ws/socketHandler.js'
 import { runMigrations } from './db/schema.js'
 import { HubletHandler } from './serial/serialReader.js';
+import RaceRegistry from './db/RaceRegistry.js';
+import ClientRegistry from './ws/ClientRegistry.js';
+import RaceSessionHandler from './ws/RaceHandler.js';
+import fs from 'fs';
+import net from 'net';
+import fastifyCors from '@fastify/cors';
 
 process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
 
 const fastify = Fastify({ logger: true })
-
+fastify.register(fastifyCors)
 fastify.register(websocket)
 
 // A simple WebSocket route
@@ -32,6 +38,15 @@ fastify.register(async (app) => {
 // Regular HTTP route still works alongside WebSocket
 fastify.get('/health', async () => {
   return { status: 'ok' }
+})
+
+fastify.get('/active-session', async (req, res) => {
+  const session = RaceRegistry.getActiveRaceSession();
+
+  console.log(session);
+
+  if (session) return res.status(200).send(session);
+  else return res.status(404).send();
 })
 
 // ── Serial bridge ─────────────────────────────────────────────
@@ -70,25 +85,6 @@ const dev = () => {
       const input = data.toString().trim();
 
       switch (input.split(" ")[0]) {
-        case "session_new":
-          try {
-            RaceRegistry.startRaceSession(input.split(" ")[1]);
-          } catch (e) {
-            socket.write(JSON.stringify(e) + '\n> ');
-          }
-          socket.write('\n> ');
-          break;
-        case "session_end":
-          try {
-            RaceRegistry.endRaceSession(input.split(" ")[1]);
-          } catch (e) {
-            socket.write(JSON.stringify(e) + '\n> ');
-          }
-          socket.write('\n> ');
-          break;
-        case "bc":
-          ClientRegistry.broadcast({msg: "yaur"});
-          break;
         default:
           try {
             let gate = Number(input);
@@ -107,12 +103,6 @@ const dev = () => {
   process.on('SIGINT', () => { RaceRegistry.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH); process.exit(); });
 }
 
-import net from 'net';
-import RaceSessionHandler from './ws/RaceHandler.js'
-import fs from 'fs'
-import RaceRegistry from './db/RaceRegistry.js'
-import ClientRegistry from './ws/ClientRegistry.js'
-
-dev(); // Use: node -e "const n=require('net').connect('\\\\.\\pipe\\myapp-debug');process.stdin.pipe(n);n.pipe(process.stdout)"
+if (process.env.GATE_TESTING_SHELL) dev(); // Use: node -e "const n=require('net').connect('\\\\.\\pipe\\myapp-debug');process.stdin.pipe(n);n.pipe(process.stdout)"
 
 

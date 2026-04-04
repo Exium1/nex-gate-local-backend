@@ -6,7 +6,7 @@ export function runMigrations() {
       id          TEXT    PRIMARY KEY,
       started_at  INTEGER NOT NULL,
       ended_at    INTEGER,               -- NULL while active
-      pilot_name  TEXT    NOT NULL
+      mode        TEXT    NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS laps (
