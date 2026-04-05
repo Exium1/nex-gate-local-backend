@@ -34,15 +34,15 @@ export default class ClientRegistry {
     }
   }
 
-  public static join(client: Client, {role, pilotName}: JoinPayload): Client {
-    if (!this.assignRole(client, role)) {
-      client.setRole(Role.Spectator)
+  public static join(client: Client, {role}: JoinPayload): Client {
+    if (!this.assignRole(client, role)) { // Attempt to give requested role
+      client.setRole(Role.Spectator)      // Fallback to spectator
     }
 
-    if (!this.assignPilotName(client, pilotName)) {
-      let i = 2;
-      while (!this.assignPilotName(client, `${pilotName}-${i++}`)) {}
-    }
+    // if (!this.assignPilotName(client, pilotName)) {
+    //   let i = 2;
+    //   while (!this.assignPilotName(client, `${pilotName}-${i++}`)) {}
+    // }
 
     return client;
   }
@@ -63,13 +63,13 @@ export default class ClientRegistry {
     return true;
   }
 
-  public static assignPilotName(client: Client, name: string): boolean {
-    const taken = Array.from(this.clients.values())
-      .some(c => c.pilotName === name && c.id !== client.id);
+  // public static assignPilotName(client: Client, name: string): boolean {
+  //   const taken = Array.from(this.clients.values())
+  //     .some(c => c.pilotName === name && c.id !== client.id);
 
-    if (taken) return false;
+  //   if (taken) return false;
 
-    client.setPilotName(name);
-    return true;
-  }
+  //   client.setPilotName(name);
+  //   return true;
+  // }
 }

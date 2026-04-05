@@ -11,7 +11,6 @@ export enum WsErrorCode {
 // Payloads
 export type JoinPayload = {
   role: Role
-  pilotName: string
 }
 
 export type RaceControlPayload = {

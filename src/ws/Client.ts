@@ -8,7 +8,6 @@ export default class Client {
   ws: WebSocket // WS
   id: string // UUID
   role: Role = Role.Spectator
-  pilotName?: string
 
   constructor(ws: WebSocket, clientId?: string, role: Role = Role.Spectator, pilotName?: string) {
     if (!ws || typeof ws.send !== 'function') {
@@ -17,7 +16,6 @@ export default class Client {
     
     this.ws = ws;
     this.id = clientId || uuid();
-    this.pilotName = pilotName;
 
     ClientRegistry.add(this);
   }
@@ -31,19 +29,16 @@ export default class Client {
       ClientRegistry.director = null;
     }
 
+    ClientRegistry.clients.delete(this.id);
+
     try {
-      if (this.pilotName) RaceRegistry.endRaceSession(this.pilotName);
+      if (ClientRegistry.clients.size == 0) RaceRegistry.endRaceSession();
     } catch (_) {}
     
-    ClientRegistry.clients.delete(this.id);
     this.ws.close();
   }
 
   setRole(role: Role) {
     this.role = role
-  }
-
-  setPilotName(name: string) {
-    this.pilotName = name
   }
 }

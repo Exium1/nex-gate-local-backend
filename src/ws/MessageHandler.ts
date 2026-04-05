@@ -36,7 +36,7 @@ export default class MessageHandler {
     const msg: InboundMessage = parsed
     switch (msg.type) {
       case 'join':
-        this.handleJoinMessage(msg.payload)        // typed as JoinPayload
+        this.handleJoinMessage()        // typed as JoinPayload
         break
       case 'race_control':
         this.handleRaceControlMessage(msg.payload) // typed as RaceControlPayload
@@ -47,22 +47,24 @@ export default class MessageHandler {
     }
   }
 
-  private handleJoinMessage(payload: JoinPayload) {
+  private handleJoinMessage() {
+    // Force set to director if possible for now
+    const client = ClientRegistry.join(this.client, { role: Role.Director });
 
-    // Validate payload fields
-    if (typeof payload.role !== 'string' || !Object.values(Role).includes(payload.role)) {
-      this.error(WsErrorCode.UNKNOWN_TYPE, 'Invalid payload for join message')
-      return
-    }
-    if (typeof payload.pilotName !== 'string') {
-      this.error(WsErrorCode.UNKNOWN_TYPE, 'Invalid payload for join message')
-      return
-    }
-
-    const client = ClientRegistry.join(this.client, payload);
-
-    this.reply({ type: 'join_success', client: { id: client.id, role: client.role, pilotName: client.pilotName} })
+    this.reply({ client: { id: client.id, role: client.role }})
   }
+
+  // private handleJoinMessage(payload: JoinPayload) {
+  //   // Validate payload fields
+  //   if (typeof payload.role !== 'string' || !Object.values(Role).includes(payload.role)) {
+  //     this.error(WsErrorCode.UNKNOWN_TYPE, 'Invalid payload for join message')
+  //     return
+  //   }
+
+  //   const client = ClientRegistry.join(this.client, payload);
+
+  //   this.reply({ client: { id: client.id, role: client.role }})
+  // }
 
   private handleRaceControlMessage(payload: RaceControlPayload) {
     if (this.client.role !== Role.Director) {

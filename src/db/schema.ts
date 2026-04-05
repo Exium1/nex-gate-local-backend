@@ -35,4 +35,6 @@ export function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_gate_events_lap      ON gate_events(lap_id);
     CREATE INDEX IF NOT EXISTS idx_gate_events_session  ON gate_events(race_session_id);
   `)
+
+  // TODO: CHECK FOR ACTIVE SESSION AND FORCE SET ON STARTUP
 }

@@ -67,13 +67,15 @@ export default class RaceRegistry {
     return session;
   }
 
-  static endRaceSession(pilot_name: string): void {
+  static endRaceSession(): void {
     const activeSession = this.getActiveRaceSession();
     if (!activeSession) {
-      throw new Error(`No on-going race session found for ${pilot_name}`);
+      throw new Error(`No on-going race session found.`);
     }
 
-    RaceSessionHandler.sessionsPerPilot.delete(pilot_name);
+    RaceSessionHandler.sessionsPerPilot.clear;
+    RaceSessionHandler.activeLapPerPilot.clear;
+    RaceSessionHandler.previousGateEventPerPilot.clear;
 
     db.prepare(`
       UPDATE race_sessions SET ended_at = ? WHERE id = ?

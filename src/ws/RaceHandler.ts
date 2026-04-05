@@ -11,9 +11,6 @@ export default class RaceSessionHandler {
 
   static gateTriggered(gateId: number, timestamp: number, beamX: number, beamY: number) {
 
-    // Update UI
-    // ClientRegistry.broadcast({ type: 'gate_trigger', payload: { gate_id: gateId, timestamp, beam_x: beamX, beam_y: beamY }})
-    
     // Ongoing lap
     const pilotName = "default"; // TODO: extract from trigger somehow
     const gateCount = 4; // TODO: extract from config somehow

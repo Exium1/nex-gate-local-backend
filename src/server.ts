@@ -43,8 +43,6 @@ fastify.get('/health', async () => {
 fastify.get('/active-session', async (req, res) => {
   const session = RaceRegistry.getActiveRaceSession();
 
-  console.log(session);
-
   if (session) return res.status(200).send(session);
   else return res.status(404).send();
 })
@@ -53,7 +51,7 @@ fastify.get('/active-session', async (req, res) => {
 const SERIAL_PATH = process.env.SERIAL_PATH ?? '/dev/ttyUSB0'
 
 try {
-  const hubletHandler = new HubletHandler(SERIAL_PATH, 115200);
+  // const hubletHandler = new HubletHandler(SERIAL_PATH, 115200);
   fastify.log.info(`Serial listening on ${SERIAL_PATH}`);
 } catch (err) {
   fastify.log.warn(`Serial unavailable (${SERIAL_PATH}) — running without hardware`)
