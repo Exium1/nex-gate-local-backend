@@ -1,3 +1,4 @@
+import RaceRegistry from '../db/RaceRegistry.js';
 import { InboundMessage, isInboundMessage, JoinPayload, RaceControlPayload, WsErrorCode } from '../types/messages.js';
 import { Role } from '../types/roles.js';
 import Client from './Client.js';
@@ -36,7 +37,7 @@ export default class MessageHandler {
     const msg: InboundMessage = parsed
     switch (msg.type) {
       case 'join':
-        this.handleJoinMessage()        // typed as JoinPayload
+        this.handleJoinMessage(msg.requestId)
         break
       case 'race_control':
         this.handleRaceControlMessage(msg.payload) // typed as RaceControlPayload
@@ -47,11 +48,13 @@ export default class MessageHandler {
     }
   }
 
-  private handleJoinMessage() {
+  private handleJoinMessage(requestId?: number) {
     // Force set to director if possible for now
     const client = ClientRegistry.join(this.client, { role: Role.Director });
+    // Get current or start race session
+    const session = RaceRegistry.getActiveRaceSession() || RaceRegistry.startRaceSession();
 
-    this.reply({ client: { id: client.id, role: client.role }})
+    this.reply({ requestId, client: { id: client.id, role: client.role }, session: { startedAt: session.started_at, mode: session.mode }})
   }
 
   // private handleJoinMessage(payload: JoinPayload) {

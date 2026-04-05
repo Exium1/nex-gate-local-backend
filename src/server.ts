@@ -3,13 +3,13 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { onConnection } from './ws/socketHandler.js'
 import { runMigrations } from './db/schema.js'
-import { HubletHandler } from './serial/serialReader.js';
 import RaceRegistry from './db/RaceRegistry.js';
 import ClientRegistry from './ws/ClientRegistry.js';
 import RaceSessionHandler from './ws/RaceHandler.js';
 import fs from 'fs';
 import net from 'net';
 import fastifyCors from '@fastify/cors';
+import { gateConnector } from './ws/GateConnector.js';
 
 process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
@@ -47,16 +47,6 @@ fastify.get('/active-session', async (req, res) => {
   else return res.status(404).send();
 })
 
-// ── Serial bridge ─────────────────────────────────────────────
-const SERIAL_PATH = process.env.SERIAL_PATH ?? '/dev/ttyUSB0'
-
-try {
-  // const hubletHandler = new HubletHandler(SERIAL_PATH, 115200);
-  fastify.log.info(`Serial listening on ${SERIAL_PATH}`);
-} catch (err) {
-  fastify.log.warn(`Serial unavailable (${SERIAL_PATH}) — running without hardware`)
-}
-
 const start = async () => {
   try {
     await fastify.listen({ port: 3001, host: '0.0.0.0' })
@@ -66,6 +56,9 @@ const start = async () => {
   }
 }
 
+
+// Listen to websocket between Pi and gates
+gateConnector.listen();
 start()
 
 // DEV TESTING STUFF

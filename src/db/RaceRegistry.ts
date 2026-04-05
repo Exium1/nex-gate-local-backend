@@ -47,11 +47,13 @@ export default class RaceRegistry {
     `).get() as RaceSession | null
   }
 
-  static startRaceSession(pilot_name: string): RaceSession {
+  static startRaceSession(): RaceSession {
     const activeSession = this.getActiveRaceSession();
     if (activeSession) {
-      throw new Error(`On-going race session for ${pilot_name}`);
+      throw new Error(`Already an on-going race session.`);
     }
+
+    console.log("Starting race session...");
 
     const session: RaceSession = {
       id: uuid(),
@@ -72,6 +74,8 @@ export default class RaceRegistry {
     if (!activeSession) {
       throw new Error(`No on-going race session found.`);
     }
+
+    console.log("Ending race session...");
 
     RaceSessionHandler.sessionsPerPilot.clear;
     RaceSessionHandler.activeLapPerPilot.clear;

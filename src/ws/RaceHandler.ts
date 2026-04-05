@@ -13,7 +13,7 @@ export default class RaceSessionHandler {
 
     // Ongoing lap
     const pilotName = "default"; // TODO: extract from trigger somehow
-    const gateCount = 4; // TODO: extract from config somehow
+    const gateCount = 3; // TODO: extract from config somehow
     const session = this.sessionsPerPilot.get(pilotName) || RaceRegistry.getActiveRaceSession();
     const lapTimeout = 180000; // 3 mins im ms
 

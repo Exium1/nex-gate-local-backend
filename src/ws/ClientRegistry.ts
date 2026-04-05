@@ -1,3 +1,4 @@
+import RaceRegistry from "../db/RaceRegistry.js";
 import { JoinPayload } from "../types/messages.js";
 import { Role } from "../types/roles.js";
 import Client from "./Client.js";
@@ -16,6 +17,7 @@ export default class ClientRegistry {
     if (client.role === Role.Director) this.director = null
     this.clients.delete(clientId)
     client.ws.close()
+    if (this.clients.size == 0) RaceRegistry.endRaceSession();
   }
 
   public static get(clientId: string) {

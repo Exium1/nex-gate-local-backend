@@ -17,18 +17,10 @@ export type RaceControlPayload = {
   command: string
 }
 
-export type GateTriggerPayload = {
-  gateId: string
-  droneId: string
-  timestamp: number
-  beamIndex: number
-}
-
 // Discriminated union — every inbound message shape
 export type InboundMessage =
-  | { type: 'join';          payload: JoinPayload }
+  | { type: 'join';          payload: JoinPayload ;       requestId?: number }
   | { type: 'race_control';  payload: RaceControlPayload }
-  | { type: 'gate_trigger';  payload: GateTriggerPayload }
 
 export const INBOUND_TYPES = ['join', 'race_control', 'gate_trigger'] as const
   
