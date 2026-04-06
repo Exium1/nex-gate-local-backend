@@ -1,6 +1,5 @@
-import RaceRegistry, { RichGateEvent, GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js";
+import RaceRegistry, { GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js";
 import { clientConnector } from "./ClientConnector.js";
-import ClientRegistry from "./ClientRegistry.js";
 import { v4 as uuid } from 'uuid'
 
 export default class RaceSessionHandler {

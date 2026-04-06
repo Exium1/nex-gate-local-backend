@@ -1,4 +1,4 @@
-import RaceSessionHandler from '../ws/RaceHandler.js'
+import RaceSessionHandler from '../ws/RaceSessionHandler.js'
 import db from './database.js'
 import { v4 as uuid } from 'uuid'
 

@@ -1,7 +1,7 @@
 // src/server.ts
 import { runMigrations } from './db/schema.js'
 import RaceRegistry from './db/RaceRegistry.js';
-import RaceSessionHandler from './ws/RaceHandler.js';
+import RaceSessionHandler from './ws/RaceSessionHandler.js';
 import fs from 'fs';
 import net from 'net';
 import { gateConnector } from './ws/GateConnector.js';
