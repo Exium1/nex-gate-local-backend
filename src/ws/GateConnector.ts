@@ -11,17 +11,18 @@ type SyncAck = {
 
 export class GateConnector {
   private fastify
-  private connections: Set<GateConnection>
+  private gates: Set<Gate>
 
   constructor() {
     this.fastify = Fastify({ logger: true })
     this.fastify.register(websocket)
-    this.connections = new Set()
+    this.gates = new Set()
 
     this.fastify.register(async (app) => {
       app.get('/ws', { websocket: true }, (socket, req) => {
-        const connection = new GateConnection(socket, this.connections.size)
-        this.connections.add(connection)
+        // Runs on connection
+        const gate = new Gate(socket, this.gates.size)
+        this.gates.add(gate)
       })
     })
   }
@@ -35,12 +36,12 @@ export class GateConnector {
     }
   }
 
-  closeGate(gateConnection: GateConnection) {
-    this.connections.delete(gateConnection);
+  remove(gate: Gate) {
+    this.gates.delete(gate);
   }
 }
 
-class GateConnection extends RequestResponseClient {
+export class Gate extends RequestResponseClient {
   private ws: WebSocket
   private gateId: number
   private lastSynced?: number
@@ -119,12 +120,12 @@ class GateConnection extends RequestResponseClient {
   // === LOGGING ===
   private onClose() {
     console.log(`Gate ${this.gateId} disconnected.`)
-    gateConnector.closeGate(this);
+    gateConnector.remove(this);
   }
 
   private onError(err: Error) {
     console.log(`Gate ${this.gateId} error: ${err}`)
-    gateConnector.closeGate(this);
+    gateConnector.remove(this);
   }
 }
 

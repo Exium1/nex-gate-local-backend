@@ -19,7 +19,7 @@ export type RaceControlPayload = {
 
 // Discriminated union — every inbound message shape
 export type InboundMessage =
-  | { type: 'join';          payload: JoinPayload ;       requestId?: number }
+  | { type: 'join';          payload: JoinPayload ;       requestId: number }
   | { type: 'race_control';  payload: RaceControlPayload }
 
 export const INBOUND_TYPES = ['join', 'race_control', 'gate_trigger'] as const

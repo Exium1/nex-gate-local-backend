@@ -1,45 +1,23 @@
 // src/server.ts
-import Fastify from 'fastify'
-import websocket from '@fastify/websocket'
-import { onConnection } from './ws/socketHandler.js'
 import { runMigrations } from './db/schema.js'
 import RaceRegistry from './db/RaceRegistry.js';
-import ClientRegistry from './ws/ClientRegistry.js';
 import RaceSessionHandler from './ws/RaceHandler.js';
 import fs from 'fs';
 import net from 'net';
-import fastifyCors from '@fastify/cors';
 import { gateConnector } from './ws/GateConnector.js';
+import { clientConnector } from './ws/ClientConnector.js';
 
 process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
 
-const fastify = Fastify({ logger: true })
-fastify.register(fastifyCors)
-fastify.register(websocket)
-
-// A simple WebSocket route
-fastify.register(async (app) => {
-  app.get('/ws', { websocket: true }, (socket, req) => {
-    console.log('Client connected')
-
-    onConnection(socket);
-
-    socket.on('close', () => {
-      console.log('Client disconnected')
-    })
-
-    socket.on('error', (err) => {
-      console.error('Socket error:', err)
-    })
-  })
-})
+const fastify = clientConnector.getFastify();
 
 // Regular HTTP route still works alongside WebSocket
 fastify.get('/health', async () => {
   return { status: 'ok' }
 })
 
+// Get active session
 fastify.get('/active-session', async (req, res) => {
   const session = RaceRegistry.getActiveRaceSession();
 
@@ -47,19 +25,10 @@ fastify.get('/active-session', async (req, res) => {
   else return res.status(404).send();
 })
 
-const start = async () => {
-  try {
-    await fastify.listen({ port: 3001, host: '0.0.0.0' })
-  } catch (err) {
-    fastify.log.error(err)
-    process.exit(1)
-  }
-}
-
-
 // Listen to websocket between Pi and gates
 gateConnector.listen();
-start()
+// Listen for client websockets
+clientConnector.listen();
 
 // DEV TESTING STUFF
 const dev = () => {

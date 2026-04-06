@@ -1,4 +1,5 @@
 import RaceRegistry, { RichGateEvent, GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js";
+import { clientConnector } from "./ClientConnector.js";
 import ClientRegistry from "./ClientRegistry.js";
 import { v4 as uuid } from 'uuid'
 
@@ -55,8 +56,8 @@ export default class RaceSessionHandler {
               pilotName, beamX, beamY, timestamp, intervalMs)
 
             // Broadcast FIRST for latency and enrichment logic
-            ClientRegistry.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
-            ClientRegistry.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.started_at }})
+            clientConnector.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
+            clientConnector.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.started_at }})
 
             RaceRegistry.recordGateEvent(gateEvent); // Save gate event, since new lap & event will be created.
             RaceRegistry.completeLap(lap.id, timestamp - lap.started_at);
@@ -96,7 +97,7 @@ export default class RaceSessionHandler {
       interval_ms: intervalMs
     }
 
-    !broadcastedGateEvent && ClientRegistry.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
+    !broadcastedGateEvent && clientConnector.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
     RaceRegistry.recordGateEvent(gateEvent);
     this.previousGateEventPerPilot.set(pilotName, gateEvent);
   }
