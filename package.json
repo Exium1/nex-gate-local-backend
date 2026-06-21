@@ -13,11 +13,13 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/type-provider-typebox": "^6.1.0",
     "@fastify/websocket": "^11.2.0",
     "better-sqlite3": "^12.8.0",
     "fastify": "^5.8.4",
     "serialport": "^12",
-    "uuid": "^9",
+    "typebox": "^1.2.18",
+    "uuid": "^14.0.1",
     "ws": "^8"
   },
   "devDependencies": {

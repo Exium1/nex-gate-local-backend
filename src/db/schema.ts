@@ -26,7 +26,7 @@ export function runMigrations() {
       pilot_name       TEXT,                                     -- NULL if pilot unknown
       beam_x           INTEGER NOT NULL,
       beam_y           INTEGER NOT NULL,
-      triggered_at     INTEGER NOT NULL,                         -- ns relative to lap start (0 for first gate)
+      triggered_at     INTEGER NOT NULL,                         -- timestamp of trigger
       interval_ms      INTEGER NOT NULL DEFAULT 0                -- ms since previous gate (0 for first gate)
     );
 
@@ -35,6 +35,4 @@ export function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_gate_events_lap      ON gate_events(lap_id);
     CREATE INDEX IF NOT EXISTS idx_gate_events_session  ON gate_events(race_session_id);
   `)
-
-  // TODO: CHECK FOR ACTIVE SESSION AND FORCE SET ON STARTUP
 }

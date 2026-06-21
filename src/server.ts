@@ -1,4 +1,5 @@
 // src/server.ts
+import { Static, Type } from 'typebox'
 import { runMigrations } from './db/schema.js'
 import RaceRegistry from './db/RaceRegistry.js';
 import RaceSessionHandler from './ws/RaceSessionHandler.js';
@@ -6,6 +7,7 @@ import fs from 'fs';
 import net from 'net';
 import { gateConnector } from './ws/GateConnector.js';
 import { clientConnector } from './ws/ClientConnector.js';
+import raceSessionRoutes from './routes/client/raceSession/index.js';
 
 process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
@@ -17,13 +19,31 @@ fastify.get('/health', async () => {
   return { status: 'ok' }
 })
 
-// Get active session
-fastify.get('/active-session', async (req, res) => {
-  const session = RaceRegistry.getActiveRaceSession();
-
-  if (session) return res.status(200).send(session);
-  else return res.status(404).send();
+const LapResultsResponseSchema = Type.Object({
+  lapId: Type.String(),
+  raceSessionId: Type.String(),
+  lapNumber: Type.Number(),
+  lapTimeMs: Type.Number(),
+  gateTimesMs: Type.Array(Type.Number)
 })
+
+fastify.register(raceSessionRoutes, { prefix: '/race-session' });
+
+// Get laps from ended race session
+/*
+fastify.get('/laps/:sessionId', async (req, res) => {
+  const id = ...
+  const laps = RaceRegistry.getLapsForRace(id);
+
+  ...
+})
+*/
+
+// Get gates given a lap id
+
+
+// Race all previous incomplete race sessions (only runs on start up) 
+RaceRegistry.endAllRaceSessions();
 
 // Listen to websocket between Pi and gates
 gateConnector.listen();

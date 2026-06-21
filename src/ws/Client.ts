@@ -76,7 +76,7 @@ export class Client extends RequestResponseClient {
 
     this.reply({
       client: { id: client.id, role: client.role },
-      session: { startedAt: session.started_at, mode: session.mode }
+      session: { startedAt: session.started_at, mode: session.mode, id: session.id }
     }, requestId )
   }
 

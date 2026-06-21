@@ -13,7 +13,7 @@ export type Lap = {
   id: string
   race_session_id: string // Reference session id
   pilot_name: string // (Nullable)
-  lap_time_ms?: number // Duration of lap (nullable)
+  lap_time_ms: number | null // Duration of lap (nullable)
   gate_count: number
   started_at: number // Timestamp of beginning
   // Status, if no lap time it's either DNF or active, most recent is active
@@ -41,10 +41,16 @@ export type GateEvent = {
 export default class RaceRegistry {
   
   // --- Race Sessions ---
-  static getActiveRaceSession(): (RaceSession | null) {
+  static getSession(raceSessionId: string): (RaceSession | undefined) {
+    return db.prepare(`
+      SELECT * FROM race_sessions WHERE id = ?
+    `).get(raceSessionId) as RaceSession | undefined
+  }
+
+  static getActiveRaceSession(): (RaceSession | undefined) {
     return db.prepare(`
       SELECT * FROM race_sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1
-    `).get() as RaceSession | null
+    `).get() as RaceSession | undefined
   }
 
   static startRaceSession(): RaceSession {
@@ -72,7 +78,8 @@ export default class RaceRegistry {
   static endRaceSession(): void {
     const activeSession = this.getActiveRaceSession();
     if (!activeSession) {
-      throw new Error(`No on-going race session found.`);
+      // throw new Error(`No on-going race session found.`);
+      return;
     }
 
     console.log("Ending race session...");
@@ -100,6 +107,7 @@ export default class RaceRegistry {
       pilot_name: pilot,
       gate_count: gateCount,
       started_at: Date.now(),
+      lap_time_ms: null
     }
 
     db.prepare(`
@@ -133,6 +141,12 @@ export default class RaceRegistry {
     return db.prepare(`
       SELECT * FROM laps WHERE pilot_name = ? AND race_session_id = ? AND lap_time_ms IS NULL ORDER BY started_at DESC LIMIT 1
     `).get(pilotName, sessionId) as Lap | null
+  }
+
+  static getFastestLap(pilotName: string) {
+    return db.prepare(`
+      SELECT * FROM laps WHERE pilot_name = ? AND lap_time_ms IS NOT NULL ORDER BY lap_time_ms ASC LIMIT 1
+    `).get(pilotName) as Lap | null
   }
 
   // --- Gate Events ---

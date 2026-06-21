@@ -6,6 +6,7 @@ import { Role } from '../types/roles.js'
 import RaceRegistry from '../db/RaceRegistry.js'
 import { JoinPayload } from "../types/messages.js";
 import { Client } from './Client.js'
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 
 export class ClientConnector {
   private fastify
@@ -13,7 +14,7 @@ export class ClientConnector {
   director: Client | null = null;
 
   constructor() {
-    this.fastify = Fastify({ logger: true })
+    this.fastify = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
     this.fastify.register(fastifyCors)
     this.fastify.register(websocket)
     this.clients = new Map()
