@@ -1,13 +1,13 @@
 // src/server.ts
 import { Static, Type } from 'typebox'
-import { runMigrations } from './db/schema.js'
-import RaceRegistry from './db/RaceRegistry.js';
-import RaceSessionHandler from './ws/RaceSessionHandler.js';
+import { runMigrations } from './db/migrations.js'
+import RaceSessionHandler from './services/RaceSessionHandler.js';
 import fs from 'fs';
 import net from 'net';
-import { gateConnector } from './ws/GateConnector.js';
-import { clientConnector } from './ws/ClientConnector.js';
-import raceSessionRoutes from './routes/client/raceSession/index.js';
+import { gateConnector } from './realtime/gates/GateConnector.js';
+import { clientConnector } from './realtime/clients/ClientConnector.js';
+import raceSessionRoutes from './routes/race-session/index.js';
+import RaceSessionService from './services/race-session.service.js';
 
 process.loadEnvFile();
 runMigrations() // runs once, safe to call every startup
@@ -43,7 +43,7 @@ fastify.get('/laps/:sessionId', async (req, res) => {
 
 
 // Race all previous incomplete race sessions (only runs on start up) 
-RaceRegistry.endAllRaceSessions();
+RaceSessionService.endAllRaceSessions();
 
 // Listen to websocket between Pi and gates
 gateConnector.listen();
@@ -79,8 +79,8 @@ const dev = () => {
 
   debugServer.listen(SOCKET_PATH);
 
-  process.on('exit', () => { RaceRegistry.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH) });
-  process.on('SIGINT', () => { RaceRegistry.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH); process.exit(); });
+  process.on('exit', () => { RaceSessionService.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH) });
+  process.on('SIGINT', () => { RaceSessionService.endAllRaceSessions(); fs.existsSync(SOCKET_PATH) && fs.unlinkSync(SOCKET_PATH); process.exit(); });
 }
 
 if (process.env.GATE_TESTING_SHELL) dev(); // Use: node -e "const n=require('net').connect('\\\\.\\pipe\\myapp-debug');process.stdin.pipe(n);n.pipe(process.stdout)"

@@ -1,6 +1,15 @@
-import RaceRegistry, { GateEvent, Lap, RaceSession } from "../db/RaceRegistry.js";
-import { clientConnector } from "./ClientConnector.js";
+// import RaceRegistry, { GateEvent, Lap } from "../db/RaceRegistry.js";
+import { RaceSessionRow } from "../models/race-session/race-session.types.js";
+import { clientConnector } from "../realtime/clients/ClientConnector.js";
 import { v4 as uuid } from 'uuid'
+import RaceSessionService from "./race-session.service.js";
+import { RaceSession } from "../schemas/http/race-session.schema.js";
+import { Lap } from "../schemas/http/lap.schema.js";
+import { GateEvent } from "../schemas/http/gate-event.schema.js";
+import LapService from "./lap.service.js";
+import GateEventService from "./gate-event.service.js";
+import { toGateEvent, toGateEventRow } from "../transformations/gate-event.transform.js";
+import { GateEventRow } from "../models/gate-event/gate-event.types.js";
 
 export default class RaceSessionHandler {
 
@@ -14,7 +23,7 @@ export default class RaceSessionHandler {
     // Ongoing lap
     const pilotName = "default"; // TODO: extract from trigger somehow
     const gateCount = 3; // TODO: extract from config somehow
-    const session = this.sessionsPerPilot.get(pilotName) || RaceRegistry.getActiveRaceSession();
+    const session = this.sessionsPerPilot.get(pilotName) ?? RaceSessionService.getActiveRaceSession();
     const lapTimeout = 180000; // 3 mins im ms
 
     console.log(`[${pilotName}] Gate ${gateId} triggered...`)
@@ -26,40 +35,40 @@ export default class RaceSessionHandler {
     
     this.sessionsPerPilot.set(pilotName, session);
 
-    let lap = this.activeLapPerPilot.get(pilotName) || RaceRegistry.getActiveLap(pilotName, session.id);
+    let lap = this.activeLapPerPilot.get(pilotName) ?? LapService.getActiveLap(session.id, pilotName);
     let intervalMs = 0;
     let broadcastedGateEvent = false;
 
     // If active lap is expired/timed out
-    if (lap && (timestamp - lap.started_at) > lapTimeout) {
+    if (lap && (timestamp - lap.startedAt) > lapTimeout) {
       this.activeLapPerPilot.delete(pilotName);
-      lap = null;
+      lap = undefined;
     }
 
     if (lap) {
       this.activeLapPerPilot.set(pilotName, lap);
 
       // === GATE ORDER LOGIC ===
-      let prevGateEvent = this.previousGateEventPerPilot.get(pilotName) || RaceRegistry.getPreviousGateEvent(session.id, pilotName);
+      let prevGateEvent = this.previousGateEventPerPilot.get(pilotName) ?? GateEventService.getPreviousGateEvent(session.id, pilotName);
 
       if (prevGateEvent) {
-        intervalMs = timestamp - prevGateEvent?.triggered_at;
-        const expectedGate = this.nextGateId(prevGateEvent.gate_id, gateCount);
+        intervalMs = timestamp - prevGateEvent?.triggeredAt;
+        const expectedGate = this.nextGateId(prevGateEvent.gateId, gateCount);
 
         if (expectedGate === gateId) {
           if (gateId === 0) {
             console.log(`[${pilotName}] Lap complete. Recording final gate event...`)
 
             // === COMPLETED LAP ===
-            let gateEvent: GateEvent = this.newGateEvent(gateId, session.id, lap.id,
+            let gateEventRow: GateEventRow = toGateEventRow(gateId, session.id, lap.id,
               pilotName, beamX, beamY, timestamp, intervalMs)
 
             // Broadcast FIRST for latency and enrichment logic
-            clientConnector.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
-            clientConnector.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.started_at }})
+            clientConnector.broadcast({ type: 'rich_gate_event', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
+            clientConnector.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.startedAt }})
 
-            RaceRegistry.recordGateEvent(gateEvent); // Save gate event, since new lap & event will be created.
-            RaceRegistry.completeLap(lap.id, timestamp - lap.started_at);
+            GateEventService.recordGateEvent(gateEventRow); // Save gate event, since new lap & event will be created. Needs to be AFTER enriching
+            LapService.completeLap(lap.id, timestamp - lap.startedAt);
 
             broadcastedGateEvent = true;
           }
@@ -79,12 +88,12 @@ export default class RaceSessionHandler {
     // === LAP CREATION OVERRIDES ===
     if (gateId === 0) {
       console.log(`[${pilotName}] Gate 0 override. Starting new lap...`);
-      lap = RaceRegistry.startLap(session.id, pilotName, gateCount);
+      lap = LapService.startLap(session.id, pilotName, gateCount);
       intervalMs = 0;
       this.activeLapPerPilot.set(pilotName, lap);    
     }
 
-    let gateEvent: GateEvent = {
+    let gateEventRow: GateEventRow = {
       id: uuid(),
       gate_id: gateId,
       race_session_id: session.id,
@@ -96,9 +105,9 @@ export default class RaceSessionHandler {
       interval_ms: intervalMs
     }
 
-    !broadcastedGateEvent && clientConnector.broadcast({ type: 'rich_gate_event', payload: RaceRegistry.enrichData(gateEvent)})
-    RaceRegistry.recordGateEvent(gateEvent);
-    this.previousGateEventPerPilot.set(pilotName, gateEvent);
+    !broadcastedGateEvent && clientConnector.broadcast({ type: 'rich_gate_event', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
+    GateEventService.recordGateEvent(gateEventRow);
+    this.previousGateEventPerPilot.set(pilotName, toGateEvent(gateEventRow));
   }
 
   private static previousGateId(gateId: number, gateCount: number): number {
@@ -107,21 +116,5 @@ export default class RaceSessionHandler {
 
   private static nextGateId(gateId: number, gateCount: number): number {
     return (gateId + 1) % (gateCount);
-  }
-
-  private static newGateEvent(gateId: number, sessionId: string, lapId: string, pilotName: string,
-      beamX: number, beamY: number, triggeredAt: number, intervalMs: number): GateEvent {
-    
-    return {
-      id: uuid(),
-      gate_id: gateId,
-      race_session_id: sessionId,
-      lap_id: lapId,
-      pilot_name: pilotName,
-      beam_x: beamX,
-      beam_y: beamY,
-      triggered_at: triggeredAt,
-      interval_ms: intervalMs
-    }
   }
 }

@@ -1,4 +1,4 @@
-export abstract class RequestResponseClient {
+export abstract class SocketConnection  {
   protected pending = new Map<number, {
     resolve: (value: any) => void
     reject: (reason: any) => void

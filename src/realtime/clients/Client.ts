@@ -1,11 +1,11 @@
-import { Role } from "../types/roles.js"
+import { Role } from "../../types/roles.js"
 import { WebSocket } from '@fastify/websocket'
-import { RequestResponseClient } from "../util/RequestResponseClient.js"
+import { SocketConnection  } from "../SocketConnection.js"
 import { clientConnector } from "./ClientConnector.js"
-import { InboundMessage, isInboundMessage, WsErrorCode } from "../types/messages.js"
-import RaceRegistry from "../db/RaceRegistry.js"
+import { InboundMessage, isInboundMessage, WsErrorCode } from "../../types/messages.js"
+import RaceSessionService from "../../services/race-session.service.js"
 
-export class Client extends RequestResponseClient {
+export class Client extends SocketConnection {
   ws: WebSocket // WS
   id: string // UUID
   role: Role = Role.Spectator
@@ -72,11 +72,11 @@ export class Client extends RequestResponseClient {
     // Force set to director if possible for now
     const client = clientConnector.join(this, { role: Role.Director });
     // Get current or start race session
-    const session = RaceRegistry.getActiveRaceSession() || RaceRegistry.startRaceSession();
+    const session = RaceSessionService.getActiveRaceSession() ?? RaceSessionService.startRaceSession();
 
     this.reply({
       client: { id: client.id, role: client.role },
-      session: { startedAt: session.started_at, mode: session.mode, id: session.id }
+      session: { startedAt: session.startedAt, mode: session.mode, id: session.id }
     }, requestId )
   }
 

@@ -2,11 +2,11 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { v4 as uuid } from 'uuid'
 import fastifyCors from '@fastify/cors'
-import { Role } from '../types/roles.js'
-import RaceRegistry from '../db/RaceRegistry.js'
-import { JoinPayload } from "../types/messages.js";
+import { Role } from '../../types/roles.js'
+import { JoinPayload } from "../../types/messages.js";
 import { Client } from './Client.js'
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
+import RaceSessionService from '../../services/race-session.service.js'
 
 export class ClientConnector {
   private fastify
@@ -45,7 +45,7 @@ export class ClientConnector {
   remove(client: Client) {
     if (client.role === Role.Director) this.director = null
     this.clients.delete(client.id);
-    if (this.clients.size == 0) RaceRegistry.endRaceSession();
+    if (this.clients.size == 0) RaceSessionService.endActiveRaceSession();
     if (client.ws) client.ws.close();
   }
 

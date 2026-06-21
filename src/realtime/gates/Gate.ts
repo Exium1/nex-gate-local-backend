@@ -1,6 +1,6 @@
-import { RequestResponseClient } from "../util/RequestResponseClient.js"
+import { SocketConnection  } from "../SocketConnection.js"
 import { WebSocket } from '@fastify/websocket'
-import RaceSessionHandler from "./RaceSessionHandler.js"
+import RaceSessionHandler from "../../services/RaceSessionHandler.js"
 import { gateConnector } from "./GateConnector.js"
 
 type SyncAck = {
@@ -9,7 +9,7 @@ type SyncAck = {
   T2: number
 }
 
-export class Gate extends RequestResponseClient {
+export class Gate extends SocketConnection  {
   private ws: WebSocket
   private gateId: number
   private lastSynced?: number
