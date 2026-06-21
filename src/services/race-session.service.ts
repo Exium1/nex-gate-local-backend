@@ -1,9 +1,9 @@
 import { RaceSessionDao } from "../models/race-session/race-session.dao.js";
 import { v4 as uuid } from 'uuid'
 import { RaceSessionRow } from "../models/race-session/race-session.types.js";
-import { RaceSession } from "../schemas/http/race-session.schema.js";
 import { toRaceSession } from "../transformations/race-session.transform.js";
 import RaceSessionHandler from "./RaceSessionHandler.js";
+import { RaceSession } from "@exium1/nex-gate-local-shared";
 
 const dao = new RaceSessionDao();
 

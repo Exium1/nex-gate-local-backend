@@ -2,11 +2,12 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { v4 as uuid } from 'uuid'
 import fastifyCors from '@fastify/cors'
-import { Role } from '../../types/roles.js'
-import { JoinPayload } from "../../types/messages.js";
+// import { Role } from '../../types/roles.js'
+// import { JoinPayload } from "../../types/messages.js";
 import { Client } from './Client.js'
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 import RaceSessionService from '../../services/race-session.service.js'
+import { ClientOutboundMessage, Role, RoleSchema } from '@exium1/nex-gate-local-shared'
 
 export class ClientConnector {
   private fastify
@@ -43,13 +44,13 @@ export class ClientConnector {
   }
   
   remove(client: Client) {
-    if (client.role === Role.Director) this.director = null
+    if (client.role === RoleSchema.Director) this.director = null
     this.clients.delete(client.id);
     if (this.clients.size == 0) RaceSessionService.endActiveRaceSession();
     if (client.ws) client.ws.close();
   }
 
-  broadcast(msg: object, filterFn: (id: string) => boolean = () => true) {
+  broadcast(msg: ClientOutboundMessage, filterFn: (id: string) => boolean = () => true) {
     for (const client of this.clients.values()) {        // was Client.clients
       if (filterFn(client.id) && client.ws.readyState === 1) {
         client.send(msg);
@@ -58,23 +59,23 @@ export class ClientConnector {
   }
 
   // Doesn't create a new client, but joins an already created one
-  join(client: Client, { role }: JoinPayload): Client {
+  join(client: Client, role: Role): Client {
     if (!this.assignRole(client, role)) { // Attempt to give requested role
-      client.setRole(Role.Spectator)      // Fallback to spectator
+      client.setRole(Role.SPECTATOR)      // Fallback to spectator
     }
 
     return client;
   }
 
   assignRole(client: Client, newRole: Role): boolean {
-    if (newRole === Role.Director) {
+    if (newRole === Role.DIRECTOR) {
       if (this.director !== null && this.director.id !== client.id) {
         return false; // already taken
       }
       this.director = client;
     }
 
-    if (client.role === Role.Director && newRole !== Role.Director) {
+    if (client.role === Role.DIRECTOR && newRole !== Role.DIRECTOR) {
       this.director = null; // stepping down
     }
 

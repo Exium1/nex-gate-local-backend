@@ -1,5 +1,5 @@
+import { GateEvent } from "@exium1/nex-gate-local-shared";
 import { GateEventRow } from "../models/gate-event/gate-event.types.js";
-import { GateEvent } from "../schemas/http/gate-event.schema.js";
 import { v4 as uuid } from 'uuid'
 
 export function toGateEvent(row: GateEventRow): GateEvent {

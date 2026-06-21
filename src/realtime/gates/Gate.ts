@@ -2,6 +2,8 @@ import { SocketConnection  } from "../SocketConnection.js"
 import { WebSocket } from '@fastify/websocket'
 import RaceSessionHandler from "../../services/RaceSessionHandler.js"
 import { gateConnector } from "./GateConnector.js"
+import { Value } from "@sinclair/typebox/value"
+import { GateInboundMessage, GateInboundMessageSchema, GateTriggerMessage, GateTriggerMessageSchema } from "@exium1/nex-gate-local-shared"
 
 type SyncAck = {
   type: "SYNC_ACK"
@@ -44,10 +46,23 @@ export class Gate extends SocketConnection  {
       return
     }
 
+    if (!Value.Check(GateInboundMessageSchema, msg)) {
+      console.log({gateId: this.gateId, msg }, 'unrecognized gate')
+      return
+    }
+
+    const gateInboundMessage = msg as GateInboundMessage;
+
     switch (msg?.type) {
       case "GATE_TRIGGER":
-        const gateId = process.env.MOCK_GATE_TRIGGER ? msg.gate_id : this.gateId;
-        RaceSessionHandler.gateTriggered(gateId, msg.ts, msg.beam_x, msg.beam_y)
+        const gateTriggerMessage = gateInboundMessage as GateTriggerMessage;
+        const gateId = process.env.MOCK_GATE_TRIGGER ? gateTriggerMessage.gate_id : this.gateId;
+        RaceSessionHandler.gateTriggered(
+          gateId,
+          gateTriggerMessage.ts,
+          gateTriggerMessage.beam_x,
+          gateTriggerMessage.beam_y
+        )
         break
     }
   }

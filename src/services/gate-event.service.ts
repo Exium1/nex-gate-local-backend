@@ -1,8 +1,7 @@
+import { EnrichedGateEvent, GateEvent } from "@exium1/nex-gate-local-shared";
 import { GateEventRow } from "../models/gate-event/gate-event.types.js";
 import { GateEventDao } from "../models/gate-event/gate-events.dao.js";
-import { GateEvent } from "../schemas/http/gate-event.schema.js";
 import { toGateEvent } from "../transformations/gate-event.transform.js";
-import { EnrichedGateEvent } from "../schemas/ws/client-outbound.schema.js";
 
 const dao = new GateEventDao();
 

@@ -1,13 +1,14 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { Gate } from './Gate.js'
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 
 export class GateConnector {
   private fastify
   private gates: Set<Gate>
 
   constructor() {
-    this.fastify = Fastify({ logger: true })
+    this.fastify = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
     this.fastify.register(websocket)
     this.gates = new Set()
 

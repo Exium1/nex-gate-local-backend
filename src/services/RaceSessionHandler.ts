@@ -3,13 +3,11 @@ import { RaceSessionRow } from "../models/race-session/race-session.types.js";
 import { clientConnector } from "../realtime/clients/ClientConnector.js";
 import { v4 as uuid } from 'uuid'
 import RaceSessionService from "./race-session.service.js";
-import { RaceSession } from "../schemas/http/race-session.schema.js";
-import { Lap } from "../schemas/http/lap.schema.js";
-import { GateEvent } from "../schemas/http/gate-event.schema.js";
 import LapService from "./lap.service.js";
 import GateEventService from "./gate-event.service.js";
 import { toGateEvent, toGateEventRow } from "../transformations/gate-event.transform.js";
 import { GateEventRow } from "../models/gate-event/gate-event.types.js";
+import { GateEvent, Lap, RaceSession } from "@exium1/nex-gate-local-shared";
 
 export default class RaceSessionHandler {
 
@@ -64,8 +62,8 @@ export default class RaceSessionHandler {
               pilotName, beamX, beamY, timestamp, intervalMs)
 
             // Broadcast FIRST for latency and enrichment logic
-            clientConnector.broadcast({ type: 'rich_gate_event', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
-            clientConnector.broadcast({ type: 'lap_complete', payload: {...lap, lap_time_ms: timestamp - lap.startedAt }})
+            clientConnector.broadcast({ type: 'RICH_GATE_EVENT', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
+            clientConnector.broadcast({ type: 'LAP_COMPLETED', payload: {...lap, lapDuration: timestamp - lap.startedAt }})
 
             GateEventService.recordGateEvent(gateEventRow); // Save gate event, since new lap & event will be created. Needs to be AFTER enriching
             LapService.completeLap(lap.id, timestamp - lap.startedAt);
@@ -105,7 +103,7 @@ export default class RaceSessionHandler {
       interval_ms: intervalMs
     }
 
-    !broadcastedGateEvent && clientConnector.broadcast({ type: 'rich_gate_event', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
+    !broadcastedGateEvent && clientConnector.broadcast({ type: 'RICH_GATE_EVENT', payload: GateEventService.enrichGateEvent(toGateEvent(gateEventRow))})
     GateEventService.recordGateEvent(gateEventRow);
     this.previousGateEventPerPilot.set(pilotName, toGateEvent(gateEventRow));
   }

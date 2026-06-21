@@ -1,14 +1,14 @@
-import { Role } from "../../types/roles.js"
 import { WebSocket } from '@fastify/websocket'
 import { SocketConnection  } from "../SocketConnection.js"
 import { clientConnector } from "./ClientConnector.js"
-import { InboundMessage, isInboundMessage, WsErrorCode } from "../../types/messages.js"
 import RaceSessionService from "../../services/race-session.service.js"
+import { ClientInboundMessage, ClientInboundMessageSchema, ClientOutboundMessage, JoinRaceSessionRequestMessage, JoinRaceSessionResponse, JoinRaceSessionResponseMessage, Role, WsErrorCode } from "@exium1/nex-gate-local-shared"
+import { Value } from "@sinclair/typebox/value"
 
 export class Client extends SocketConnection {
   ws: WebSocket // WS
   id: string // UUID
-  role: Role = Role.Spectator
+  role: Role = Role.SPECTATOR
 
   constructor(ws: WebSocket, id: string) {
     super()
@@ -21,7 +21,7 @@ export class Client extends SocketConnection {
     ws.on('error', (err) => this.onError(err))
   }
 
-  send(data: object) {
+  send(data: ClientOutboundMessage) {
     this.ws.send(JSON.stringify(data))
   }
 
@@ -31,7 +31,7 @@ export class Client extends SocketConnection {
   }
 
   error(code: WsErrorCode, message: string, requestId?: number) {
-    if (requestId == undefined) this.send({ type: 'error', code, message });
+    if (requestId == undefined) this.send({ type: 'ERROR', code, message });
     else this.reply({ type: 'error', code, message }, requestId)
   }
 
@@ -45,24 +45,25 @@ export class Client extends SocketConnection {
 
     console.log(`[Client ${this.id}] ${JSON.stringify(msg)}`)
 
-    // Route request/response pairs back to pending promises (Client response -> Backend)
-    if (msg.request_id != null && this.pending.get(msg.request_id)) {
-      msg.error
-        ? this.rejectRequest(msg.request_id, msg.error)
-        : this.resolveRequest(msg.request_id, msg)
-
-      return
-    }
-
     // Inbound message handling (Client request -> Backend)
-    if (!isInboundMessage(msg)) {
+    if (!Value.Check(ClientInboundMessageSchema, msg)) {
       return this.error(WsErrorCode.UNKNOWN_TYPE, `Unknown or malformed message type`)
     }
 
+    const incomingMsg: ClientInboundMessage = msg
+
+    // Route request/response pairs back to pending promises (Client response -> Backend)
+    if (incomingMsg.requestId != null && this.pending.get(incomingMsg.requestId)) {
+      // msg.type === "ERROR"
+        // ? this.rejectRequest(incomingMsg.requestId, msg.error)
+      this.resolveRequest(incomingMsg.requestId, msg)
+
+      return
+    }
+    
     // TypeScript now fully narrows inside each case
-    const incomingMsg: InboundMessage = msg
     switch (incomingMsg?.type) {
-      case "join":
+      case "JOIN":
         this.handleJoinMessage(incomingMsg.requestId)
         break
     }
@@ -70,14 +71,22 @@ export class Client extends SocketConnection {
 
   private handleJoinMessage(requestId: number) {
     // Force set to director if possible for now
-    const client = clientConnector.join(this, { role: Role.Director });
+    const client = clientConnector.join(this, Role.DIRECTOR);
     // Get current or start race session
     const session = RaceSessionService.getActiveRaceSession() ?? RaceSessionService.startRaceSession();
 
-    this.reply({
-      client: { id: client.id, role: client.role },
-      session: { startedAt: session.startedAt, mode: session.mode, id: session.id }
-    }, requestId )
+    const response: JoinRaceSessionResponseMessage = {
+      type: "JOIN_RESPONSE",
+      payload: {
+        client: { id: client.id, role: client.role },
+        session: { startedAt: session.startedAt, mode: session.mode, id: session.id }
+      },
+      requestId
+    }
+
+    console.log(response);
+
+    this.send(response);
   }
 
   setRole(role: Role) {

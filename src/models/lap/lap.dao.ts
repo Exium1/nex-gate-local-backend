@@ -26,6 +26,17 @@ export class LapDao {
     `).all(raceSessionId) as LapRow[]
   }
 
+  /**
+   * Get the COMPLETED laps in a given race session.
+   * @param raceSessionId - Race session id to get laps for.
+   * @returns List of completed laps in race session in ascending order.
+   */
+  getCompletedByRaceSessionId(raceSessionId: string): LapRow[] {
+    return db.prepare(`
+      SELECT * FROM laps WHERE race_session_id = ? AND lap_time_ms IS NOT NULL ORDER BY started_at ASC
+    `).all(raceSessionId) as LapRow[]
+  }
+
   getActiveLap(raceSessionId: string, pilotName: string): LapRow | undefined {
     return db.prepare(`
       SELECT * FROM laps WHERE pilot_name = ? AND race_session_id = ? AND lap_time_ms IS NULL ORDER BY started_at DESC LIMIT 1

@@ -1,7 +1,7 @@
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { FastifyInstance } from "fastify";
-import { RaceSessionSchema } from "../../schemas/http/race-session.schema.js";
 import RaceSessionService from "../../services/race-session.service.js";
+import { RaceSessionSchema } from "@exium1/nex-gate-local-shared";
 
 // url: /session/active
 export function getActiveRaceSession(fastify: FastifyInstance) {

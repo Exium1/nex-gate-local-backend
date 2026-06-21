@@ -1,5 +1,5 @@
+import { CompletedLap, Lap } from "@exium1/nex-gate-local-shared";
 import { LapRow } from "../models/lap/lap.types.js";
-import { Lap } from "../schemas/http/lap.schema.js";
 
 export function toLap(row: LapRow): Lap {
   return {

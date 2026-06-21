@@ -1,8 +1,8 @@
 import { LapDao } from "../models/lap/lap.dao.js";
 import { LapRow } from "../models/lap/lap.types.js";
-import { Lap } from "../schemas/http/lap.schema.js";
 import { v4 as uuid } from 'uuid'
 import { toLap } from "../transformations/lap.transform.js";
+import { CompletedLap, Lap, LapCompletedMessageSchema } from "@exium1/nex-gate-local-shared";
 
 const dao = new LapDao();
 
@@ -29,6 +29,11 @@ export default class LapService {
   static getLapsInRaceSession(raceSessionId: string): Lap[] {
     const lapRows = dao.getByRaceSessionId(raceSessionId);
     return lapRows.map(lapRow => toLap(lapRow));
+  }
+
+  static getCompletedLapsInRaceSession(raceSessionId: string): CompletedLap[] {
+    const lapsRows = dao.getCompletedByRaceSessionId(raceSessionId);
+    return lapsRows.map(lapRow => toLap(lapRow)).filter(lap => lap.lapDuration !== null) as CompletedLap[];
   }
   
   static getActiveLap(raceSessionId: string, pilotName: string): Lap | undefined {

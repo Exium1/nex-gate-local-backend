@@ -1,5 +1,5 @@
 // src/server.ts
-import { Static, Type } from 'typebox'
+import { Type } from '@sinclair/typebox'
 import { runMigrations } from './db/migrations.js'
 import RaceSessionHandler from './services/RaceSessionHandler.js';
 import fs from 'fs';
@@ -24,7 +24,7 @@ const LapResultsResponseSchema = Type.Object({
   raceSessionId: Type.String(),
   lapNumber: Type.Number(),
   lapTimeMs: Type.Number(),
-  gateTimesMs: Type.Array(Type.Number)
+  gateTimesMs: Type.Array(Type.Number())
 })
 
 fastify.register(raceSessionRoutes, { prefix: '/race-session' });
